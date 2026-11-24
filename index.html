@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Edit PDFs privately in your browser. Nothing is uploaded." />
+    <title>Rizam PDF Studio</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand"><span class="brand-logo">R<span>.</span></span><span><strong>Rizam PDF Studio</strong><small>Local-first PDF editor</small></span></div>
+        <div class="top-actions">
+          <span class="privacy"><span class="privacy-dot"></span>Files stay on your device</span>
+          <button id="autoFillBtn" class="button subtle">✦ Auto-fill form</button>
+          <button id="openBtn" class="button subtle">Open PDF</button>
+          <button id="saveBtn" class="button primary" disabled>Export PDF <span class="down-arrow">↓</span></button>
+        </div>
+      </header>
+      <main class="workspace">
+        <aside class="left-sidebar">
+          <div class="eyebrow">TOOLS</div>
+          <button class="tool active" data-tool="select"><span class="tool-icon">↖</span><span>Select / move</span><small>V</small></button>
+          <button class="tool" data-tool="text"><span class="tool-icon tool-icon-text">T</span><span>Add text</span><small>T</small></button>
+          <button class="tool" data-tool="highlight"><span class="tool-icon yellow">▰</span><span>Highlight</span><small>H</small></button>
+          <button class="tool" data-tool="cover"><span class="tool-icon">▢</span><span>Cover area</span><small>C</small></button>
+          <button class="tool" data-tool="image"><span class="tool-icon">▧</span><span>Add image / signature</span><small>I</small></button>
+          <button class="tool" data-tool="profile"><span class="tool-icon">✦</span><span>Place saved field</span><small>P</small></button>
+          <div class="side-divider"></div>
+          <div class="eyebrow">DOCUMENT</div>
+          <button id="removePageBtn" class="tool" disabled><span class="tool-icon">✕</span><span>Delete current page</span></button>
+          <div class="sidebar-note"><strong>Editing tip</strong><span>Choose a tool, then click the document. For highlights and covers, drag to draw a rectangle.</span></div>
+        </aside>
+        <section class="document-area">
+          <div id="documentToolbar" class="document-toolbar">
+            <div id="filename" class="filename">No document selected</div>
+            <div class="page-tools"><button id="prevBtn" aria-label="Previous page" disabled>‹</button><span id="pageCounter">– / –</span><button id="nextBtn" aria-label="Next page" disabled>›</button><span class="toolbar-separator"></span><span id="zoomLabel">100%</span></div>
+          </div>
+          <div id="canvasScroll" class="canvas-scroll">
+            <div id="welcome" class="welcome"><div class="welcome-icon">▤</div><div class="welcome-tag">YOUR PRIVATE PDF WORKSPACE</div><h1>Your document, your edits.</h1><p>Open a PDF to add text, highlight important parts, cover areas, and insert images or signatures. Everything happens right here in your browser.</p><button id="welcomeOpen" class="button primary large">Choose a PDF <span>↗</span></button><div class="drop-hint">or drag and drop your PDF here</div><div class="welcome-foot"><span>✓ No account needed</span><span>✓ No server upload</span><span>✓ Save a new copy</span></div></div>
+            <div id="pageStage" class="page-stage" hidden><canvas id="pdfCanvas"></canvas><div id="annotationLayer" class="annotation-layer"></div><div id="drawLayer" class="draw-layer" hidden></div></div>
+          </div>
+          <div class="statusbar"><span id="status">Ready. Open a PDF to begin.</span><span id="pageDetails"></span></div>
+        </section>
+        <aside class="right-sidebar">
+          <div class="inspector-title">Properties</div>
+          <div id="emptyInspector" class="empty-inspector"><div class="inspector-illustration">☷</div><h3>Nothing selected</h3><p>Choose a tool or select an item on your document to adjust its properties.</p></div>
+          <div id="textInspector" class="inspector-section" hidden><label for="textInput">Text</label><textarea id="textInput" rows="4" placeholder="Enter text to add"></textarea><label for="fontSize">Font size</label><input id="fontSize" type="number" min="6" max="100" value="18" /><label for="textColor">Text color</label><input id="textColor" type="color" value="#18253c" /><p class="property-hint">Choose the Text tool and click the page, or select an existing text item to edit it.</p></div>
+          <div id="rectInspector" class="inspector-section" hidden><label for="fillColor">Color</label><input id="fillColor" type="color" value="#fbe06c" /><label for="fillOpacity">Opacity</label><input id="fillOpacity" type="range" min="10" max="100" value="35" /><span class="property-hint" id="opacityLabel">35%</span></div>
+          <div id="imageInspector" class="inspector-section" hidden>
+            <button id="cropImageBtn" class="button primary block">✂ Crop selected image</button>
+            <label for="imageWidth">Width (PDF points)</label><input id="imageWidth" type="number" min="10" max="1200" step="1" value="160" />
+            <label for="imageHeight">Height (PDF points)</label><input id="imageHeight" type="number" min="10" max="1200" step="1" value="160" />
+            <label class="inline-checkbox" for="lockAspect"><input id="lockAspect" type="checkbox" checked /> Lock aspect ratio</label>
+            <p class="property-hint">Select the image and drag a blue corner to resize it. Use Crop to adjust which part is visible. Both controls work before export.</p>
+            <button id="findSelectedImage" class="button subtle block">Find / bring image onto page</button>
+          </div>
+          <div id="profileInspector" class="inspector-section" hidden><label for="profileFieldSelect">Saved profile detail</label><select id="profileFieldSelect" class="inspector-select"></select><p class="property-hint">Click the PDF where the selected answer should go. Open Auto-fill form to edit your profile.</p></div>
+          <div id="selectionActions" class="inspector-section" hidden><button id="deleteSelection" class="button danger block">Delete selected item</button><button id="deselect" class="button subtle block">Deselect</button></div>
+          <div class="safety"><span>ⓘ</span><div><strong>About Cover area</strong><p>This places a colored rectangle over the page. It is <em>not</em> secure redaction: the original content may still exist underneath.</p></div></div>
+        </aside>
+      </main>
+    </div>
+    <div id="cropDialog" class="crop-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="cropTitle">
+      <div class="crop-panel">
+        <div class="crop-head"><div><h2 id="cropTitle">Crop image</h2><p>Drag the crop area or its blue corners. Only the selected area will appear in your PDF.</p></div><button id="cropCancel" class="button subtle" type="button">Cancel</button></div>
+        <div class="crop-controls"><label for="cropPreset">Crop shape</label><select id="cropPreset"><option value="free">Free crop</option><option value="square">Square (1:1)</option><option value="passport">Passport portrait (35:45)</option><option value="portrait">Portrait (4:5)</option></select><button id="cropReset" class="button subtle" type="button">Reset crop</button></div>
+        <div class="crop-workspace"><div class="crop-stage" id="cropStage"><img id="cropPreview" alt="Original uploaded image" draggable="false" /><div id="cropSelection" class="crop-selection"><div class="crop-rule-of-thirds"></div><span class="crop-handle crop-nw" data-crop-corner="nw"></span><span class="crop-handle crop-ne" data-crop-corner="ne"></span><span class="crop-handle crop-sw" data-crop-corner="sw"></span><span class="crop-handle crop-se" data-crop-corner="se"></span></div></div></div>
+        <div class="crop-footer"><span id="cropInfo">Adjust your selection</span><button id="cropApply" class="button primary" type="button">Apply crop</button></div>
+      </div>
+    </div>
+    <dialog id="autofillDialog" class="profile-dialog" aria-labelledby="profileTitle">
+      <div class="profile-head">
+        <div><p class="eyebrow">REUSABLE CAREER PROFILE</p><h2 id="profileTitle">Auto-fill application forms</h2><p>Enter your details once and use them to fill matching fields. Always check the result before exporting.</p></div>
+        <button id="closeProfileBtn" class="button subtle" type="button">✕ Close</button>
+      </div>
+      <div id="profileSupport" class="profile-support">Open your PDF to check for a supported form template.</div>
+      <section class="resume-import" aria-label="Import details from your résumé">
+        <div class="resume-import-top">
+          <div><strong>Import from your résumé</strong><p>Upload a PDF, DOCX or TXT résumé. Extracted information stays in this browser until you choose to save it.</p></div>
+          <button id="importResumeBtn" type="button" class="button primary">↑ Upload résumé</button>
+        </div>
+        <div id="resumePreview" class="resume-preview" hidden>
+          <div class="resume-preview-header"><strong id="resumePreviewTitle">Review extracted details</strong><button id="discardResumeBtn" class="button subtle" type="button">Discard import</button></div>
+          <p class="resume-preview-hint">These are suggestions, not verified facts. Confirm every field before exporting a job application.</p>
+          <div id="resumePreviewDetails" class="resume-preview-details"></div>
+          <ul id="resumeWarnings" class="resume-warnings"></ul>
+          <div class="resume-preview-actions"><label class="resume-overwrite"><input id="resumeOverwrite" type="checkbox" /> Replace existing matching details</label><button id="applyResumeBtn" class="button primary" type="button">Use extracted details</button></div>
+        </div>
+      </section>
+      <div class="profile-body">
+        <details open><summary>1. Personal and contact details</summary>
+          <div class="profile-fields">
+            <label>Post applied for<input data-profile-key="postApplied" placeholder="e.g. Software Engineer" /></label>
+            <label>Full name<input data-profile-key="fullName" autocomplete="name" /></label>
+            <label>Email<input data-profile-key="email" type="email" autocomplete="email" /></label>
+            <label>Mobile number<input data-profile-key="phone" autocomplete="tel" /></label>
+            <label class="wide">Address<textarea data-profile-key="address" rows="2"></textarea></label>
+            <label>Nationality<input data-profile-key="nationality" /></label>
+            <label>Place of birth<input data-profile-key="placeOfBirth" /></label>
+            <label>Date of birth<input data-profile-key="dateOfBirth" placeholder="DD/MM/YYYY" /></label>
+            <label>Home phone (optional)<input data-profile-key="homePhone" /></label>
+            <label>Office phone (optional)<input data-profile-key="officePhone" /></label>
+            <label>Identity card / passport (not saved)<input data-profile-key="identityNumber" autocomplete="off" /></label>
+            <label>Emergency contact name<input data-profile-key="emergencyName" /></label>
+            <label>Emergency contact relationship<input data-profile-key="emergencyRelationship" /></label>
+            <label>Emergency contact phone<input data-profile-key="emergencyPhone" /></label>
+            <label class="wide">Emergency contact address<input data-profile-key="emergencyAddress" /></label>
+          </div>
+        </details>
+        <details><summary>2. Education</summary><div id="educationRows" class="profile-rows"></div><button type="button" class="button subtle add-row" data-add-group="education">+ Add education</button></details>
+        <details><summary>3. Training and certifications</summary><div id="trainingRows" class="profile-rows"></div><button type="button" class="button subtle add-row" data-add-group="training">+ Add training</button></details>
+        <details><summary>4. Employment history (most recent first)</summary><div id="employmentRows" class="profile-rows"></div><button type="button" class="button subtle add-row" data-add-group="employment">+ Add employer</button></details>
+        <details><summary>5. Computer skills</summary><div id="skillsRows" class="profile-rows"></div><button type="button" class="button subtle add-row" data-add-group="skills">+ Add skill</button></details>
+        <details><summary>6. Application-specific answers</summary>
+          <div class="profile-fields">
+            <label>Expected salary<input data-profile-key="expectedSalary" placeholder="e.g. RM 5,000" /></label>
+            <label>Notice period<input data-profile-key="noticePeriod" placeholder="e.g. 1 month" /></label>
+            <label>Earliest commencement date<input data-profile-key="earliestStart" placeholder="e.g. 01/02/2027" /></label>
+            <label class="wide">Why are you applying? (maximum 100 words for PROPPY)<textarea data-profile-key="jobStatement" rows="4" placeholder="Write a truthful statement relevant to the vacancy."></textarea></label>
+          </div>
+        </details>
+      </div>
+      <p class="profile-privacy"><strong>Privacy:</strong> this editor runs locally. The optional “Save on this device” button uses unencrypted browser storage. Do not use it on a shared PC. NRIC/passport is excluded from saved profiles. Your photograph, signature and sensitive declarations are never auto-filled.</p>
+      <div id="profileStatus" class="profile-feedback" role="status">No information is sent to a server.</div>
+      <div class="profile-footer">
+        <div class="profile-small-actions">
+          <button id="saveProfileBtn" class="button subtle" type="button">Save on this device</button>
+          <button id="forgetProfileBtn" class="button subtle" type="button">Forget saved profile</button>
+          <button id="demoProfileBtn" class="button subtle" type="button">Use example details</button>
+        </div>
+        <div class="profile-main-actions">
+          <button id="manualProfileBtn" class="button subtle" type="button">Place fields manually</button>
+          <button id="applyAutoFillBtn" class="button primary" type="button">Auto-fill matching fields</button>
+        </div>
+      </div>
+      <input type="file" id="resumeInput" accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,text/plain" hidden />
+    </dialog>
+    <input type="file" id="pdfInput" accept="application/pdf,.pdf" hidden />
+    <input type="file" id="imageInput" accept="image/png,image/jpeg" hidden />
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

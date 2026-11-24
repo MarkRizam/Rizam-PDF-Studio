@@ -1,0 +1,20 @@
+node_modules/
+dist/
+coverage/
+.vite/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+*.pdf
+!tests/sample-2-pages.pdf
+*.png
+*.jpg
+*.jpeg
+*.webp
+# Do not accidentally commit user-created PDFs, exported forms or screenshots.
+# Test fixtures must be explicitly reviewed before whitelisting.

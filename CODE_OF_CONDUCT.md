@@ -1,7 +1,9 @@
-# Code of Conduct
+# Community Code of Conduct
 
-Contributors and maintainers are expected to treat each other respectfully and constructively, regardless of background, experience, or accessibility needs.
+Rizam PDF Studio welcomes people of every experience level and background. We aim for a respectful, constructive, accessible development community.
 
-Be welcoming, provide actionable technical feedback, assume good intent, and avoid personal attacks, harassment, discriminatory behavior, or publishing anyone else's private information.
+**Expected:** assume good intent, explain technical disagreement with evidence, give practical feedback, respect different communication needs, and protect people's privacy.
 
-Report conduct concerns privately to repository maintainers through GitHub. Maintainers may moderate issues, pull requests, and discussions to protect the community.
+**Not accepted:** harassment, discriminatory remarks, threats, personal attacks, publication of others' private information, or repeated disruptive behavior.
+
+If you encounter a problem, contact a repository maintainer privately through their GitHub profile or an established private communication channel. Do not post sensitive reports or personal contact details in public issues. Maintainers may edit or remove abusive content, close discussions, or restrict participation as necessary.

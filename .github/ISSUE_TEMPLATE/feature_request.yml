@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest an improvement for PDF editing or form filling
+title: '[Feature] '
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What problem should this solve?
+      placeholder: 'Describe the use case and who benefits.'
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed solution (optional)
+      placeholder: 'Ideas, alternatives, privacy or accessibility concerns.'

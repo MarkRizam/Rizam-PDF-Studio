@@ -1,0 +1,27 @@
+name: Bug report
+description: Report an editor problem using synthetic data, not private PDFs
+title: '[Bug] '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: "**Privacy:** Do not attach real resumes, job forms, ID numbers, photos or signatures. Use a synthetic example."
+  - type: input
+    id: environment
+    attributes:
+      label: Browser, operating system and version
+      placeholder: 'e.g. Chrome on Windows 11, v0.5'
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce this?
+      placeholder: 'What did you click? What did you expect? What happened?'
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Safe sample, screenshot, or logs (optional)
+      description: 'Use fictional or generated test content only.'
