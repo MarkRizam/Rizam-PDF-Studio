@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 - 2026-11-25
+
+- Fixed résumé PDF upload failing with `pdf.destroy is not a function` after extraction.
+- Clean up PDF.js loading tasks safely, including the failure path.
+- Added two regression tests for importing PDFs without `PDFDocumentProxy.destroy()`.
+
 ## 0.6.0 - 2026-11-24
 
 - Added local import for text-based PDF, DOCX and TXT résumés into an editable career profile.

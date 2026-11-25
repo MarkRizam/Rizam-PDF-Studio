@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extractResumeProfile, mergeResumeProfile, extractDocxText, linesFromPdfTextItems } from '../src/resume-import.js';
+import { extractResumeProfile, mergeResumeProfile, extractDocxText, linesFromPdfTextItems, readResumeFile } from '../src/resume-import.js';
 import { emptyProfile } from '../src/form-autofill.js';
 import { readFileSync } from 'node:fs';
 
@@ -97,4 +97,27 @@ test('DOCX extractor supports text, paragraphs and XML entities using local ZIP 
   const txt=await extractDocxText(file);
   assert.match(txt,/Amina Rahman/);assert.match(txt,/Example & Sons/);
   assert.match(txt,/Python/);
+});
+
+
+test('PDF resume import succeeds when PDF document has no destroy method',async()=>{
+  let destroyed=0;
+  const file={name:'example-resume.pdf',size:100,arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer};
+  const doc={numPages:1,getPage:async()=>({getTextContent:async()=>({items:[
+    {str:'Amina Rahman',transform:[1,0,0,1,20,700]},
+    {str:'Email: amina@example.com',transform:[1,0,0,1,20,680]},
+  ]})})};
+  const reader={getDocument:()=>({promise:Promise.resolve(doc),destroy:async()=>{destroyed++;}})};
+  const extracted=await readResumeFile(file,reader);
+  assert.match(extracted,/Amina Rahman/);
+  assert.match(extracted,/amina@example.com/);
+  assert.equal(destroyed,1,'PDF.js loading task should be disposed after import');
+});
+
+test('PDF import disposes its loading task on extraction failure',async()=>{
+  let destroyed=0;
+  const file={name:'invalid-resume.pdf',size:100,arrayBuffer:async()=>new ArrayBuffer(0)};
+  const reader={getDocument:()=>({promise:Promise.resolve({numPages:1,getPage:async()=>{throw new Error('Unusable page');}}),destroy:async()=>{destroyed++;}})};
+  await assert.rejects(readResumeFile(file,reader),/Unusable page/);
+  assert.equal(destroyed,1);
 });

@@ -334,15 +334,23 @@ export async function readResumeFile(file,pdfjsLib){
   if(name.endsWith('.docx'))return extractDocxText(await file.arrayBuffer());
   if(name.endsWith('.pdf')){
     if(!pdfjsLib)throw new Error('PDF reader unavailable.');
-    const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+    // PDF.js owns its worker through the loading task. Some PDFDocumentProxy
+    // objects do not expose destroy(), so cleaning up the document could
+    // previously mask a successful résumé extraction.
+    const loadingTask=pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())});
+    let pdf;
     try{
+      pdf=await loadingTask.promise;
       if(pdf.numPages>40)throw new Error('Please choose a résumé shorter than 40 pages.');
       const pages=[];
       for(let i=1;i<=pdf.numPages;i++){
         const page=await pdf.getPage(i);pages.push(linesFromPdfTextItems((await page.getTextContent()).items));
       }
       return pages.join('\n');
-    } finally {await pdf.destroy();}
+    } finally {
+      if(typeof loadingTask.destroy==='function')await loadingTask.destroy();
+      else if(typeof pdf?.destroy==='function')await pdf.destroy();
+    }
   }
   throw new Error('Supported résumé formats: PDF, DOCX or TXT.');
 }
