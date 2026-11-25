@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0 - 2026-11-25
+
+- Added Paste text dialog and native Ctrl+V plain-text insertion onto the current PDF page.
+- Added Copy selected item and Paste copied item, including images and cropped images. Ctrl+D duplicates selected items.
+- Added Copy page text via PDF.js text extraction, with a manual copy fallback.
+- Added clipboard geometry and wrapping regression tests.
+
 ## 0.6.2 - 2026-11-25
 
 - Prevented résumé education, dates and responsibility sentences from becoming invented employment records. Employment now requires a plausible employer, title and date range.

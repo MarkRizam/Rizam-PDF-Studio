@@ -5,7 +5,8 @@ import './styles.css';
 import { annotationViewportBounds } from './geometry.js';
 import { fullCrop, normalizedCrop, isFullCrop, centerCropToAspect, croppedAspectRatio, moveCrop, resizeCrop, resizeScreenRect, clamp } from './image-edit.js';
 import { PROFILE_STORAGE_KEY, PROFILE_FIELDS, SESSION_FIELDS, emptyProfile, cleanProfile, safeToStore, isProppyTemplate, buildProppyAnnotations, fieldOptions } from './form-autofill.js';
-import { readResumeFile, extractResumeProfile, mergeResumeProfile } from './resume-import.js';
+import { readResumeFile, extractResumeProfile, mergeResumeProfile, linesFromPdfTextItems } from './resume-import.js';
+import { preparePastedText,copyAnnotationForPage } from './clipboard-utils.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 const $ = (id) => document.getElementById(id);
@@ -14,7 +15,7 @@ const state = {
   tool: 'select', selectedId: null, viewport: null, scale: 1,
   renderTask: null, renderSerial: 0, nextId: 1,
   defaults: { text: 'Your text here', size: 18, color: '#18253c', rectColor: '#fbe06c', opacity: 0.35 },
-  pendingImage: null, drawing: null, dragging: null, resizing: null, cropEditing: null, profile: emptyProfile(), resumeImport: null,
+  pendingImage: null, drawing: null, dragging: null, resizing: null, cropEditing: null, profile: emptyProfile(), resumeImport: null, copiedItem: null, copiedText: '',
 };
 const id = () => `item-${state.nextId++}`;
 const activePage = () => state.pages[state.pageIndex];
@@ -37,6 +38,8 @@ function setTool(tool) {
 function updateToolbar() {
   const ok = state.pages.length > 0;
   $('saveBtn').disabled = !ok;
+  $('copyPageTextBtn').disabled = !ok;
+  $('pasteCopiedBtn').disabled = !ok || !state.copiedItem;
   $('removePageBtn').disabled = !ok || state.pages.length === 1;
   $('prevBtn').disabled = !ok || state.pageIndex === 0;
   $('nextBtn').disabled = !ok || state.pageIndex === state.pages.length - 1;
@@ -54,7 +57,7 @@ async function openPDF(file) {
     const pdf = await pdfjsLib.getDocument({data: bytes.slice()}).promise;
     state.pdf = pdf; state.bytes = bytes; state.filename = file.name;
     state.pages = Array.from({length: pdf.numPages}, (_, i) => ({sourceIndex: i, annotations: []}));
-    state.pageIndex = 0; state.selectedId = null; state.pendingImage = null;
+    state.pageIndex = 0; state.selectedId = null; state.pendingImage = null; state.copiedItem = null; state.copiedText='';
     $('welcome').hidden = true; $('pageStage').hidden = false;
     setTool('select'); updateToolbar(); updateInspector();
     await renderPage();
@@ -266,6 +269,7 @@ function updateInspector() {
   $('fillOpacity').value=opacity; $('opacityLabel').textContent=`${opacity}%`;
   if (a?.type === 'image') { $('imageWidth').value=Math.round(a.w); $('imageHeight').value=Math.round(a.h); }
   document.querySelector('.right-sidebar').classList.toggle('has-selection',!!a || mode === 'text');
+  $('duplicateSelectionBtn').disabled=!a; $('copySelectionBtn').disabled=!a;
 }
 function startDraw(e) {
   if (!state.pdf || !state.viewport) return;
@@ -696,6 +700,111 @@ async function exportPDF() {
     setStatus('Export failed. '+(detail.includes('WinAnsi')?'This font cannot export certain characters; try plain Latin characters.':detail));
   } finally {updateToolbar();}
 }
+/** Paste plain text from any app onto the current PDF as a movable annotation. */
+function insertPastedText(text){
+  if(!state.pdf || !activePage()){setStatus('Open a PDF before pasting text.');return false;}
+  const bounds=pageBounds(),size=11;
+  const targetWidth=Math.max(80,Math.min(340,bounds.width-36));
+  const capacity=Math.max(10,Math.floor(targetWidth/(size*.57)));
+  const maxLines=Math.max(1,Math.floor((bounds.height-40)/(size*1.18)));
+  const prepared=preparePastedText(text,capacity,maxLines);
+  if(prepared.error){setStatus(prepared.error);return false;}
+  const center=visiblePageCenter();
+  const margin=12;
+  const screenX=center.x-targetWidth*state.scale/2;
+  const screenY=center.y-prepared.lines*size*1.18*state.scale/2;
+  const pdfPos=toPDF(screenX,screenY+size*state.scale);
+  const height=prepared.lines*size*1.18;
+  const x=clamp(pdfPos.x,bounds.minX+margin,Math.max(bounds.minX+margin,bounds.maxX-targetWidth-margin));
+  const y=clamp(pdfPos.y,bounds.minY+height+margin,bounds.maxY-margin);
+  addAnnotation({type:'text',x,y,text:prepared.text,size,color:'#18253c'});
+  setTool('select');setStatus('Text pasted into the PDF. Drag it into place or edit it in Properties.');
+  return true;
+}
+function openPasteDialog(){
+  if(!state.pdf){setStatus('Open a PDF before pasting text.');return;}
+  $('pasteDialogTitle').textContent='Paste text into your PDF';
+  $('pasteDialogHint').textContent='Press Ctrl+V in the box, then click Insert on page. Drag the inserted text into position.';
+  $('pasteInsertBtn').hidden=false;
+  $('pasteDialogText').readOnly=false;
+  $('pasteDialogText').value='';
+  $('pasteDialog').hidden=false;
+  $('pasteDialogText').focus();
+}
+function closePasteDialog(){
+  $('pasteDialog').hidden=true;
+  $('pasteDialogText').value='';
+}
+async function copyCurrentPageText(){
+  if(!state.pdf || !activePage())return;
+  try{
+    const page=await state.pdf.getPage(activePage().sourceIndex+1);
+    const text=linesFromPdfTextItems((await page.getTextContent()).items);
+    if(!text.trim()){setStatus('No selectable text on this PDF page. Scanned pages require OCR.');return;}
+    try{
+      if(!navigator.clipboard?.writeText)throw new Error('Clipboard permission unavailable');
+      await navigator.clipboard.writeText(text);
+      setStatus('Current page text copied. You can paste it into another document or into the editor.');
+    }catch(_){
+      $('pasteDialogTitle').textContent='Copy text from this PDF page';
+      $('pasteDialogHint').textContent='Select all text below (Ctrl+A), then copy it (Ctrl+C).';
+      $('pasteInsertBtn').hidden=true;
+      $('pasteDialogText').readOnly=true;
+      $('pasteDialogText').value=text;
+      $('pasteDialog').hidden=false;
+      $('pasteDialogText').focus();$('pasteDialogText').select();
+    }
+  }catch(err){setStatus('Could not copy PDF page text: '+err.message);}
+}
+function rememberSelection(){
+  const a=activeAnnotation();if(!a)return false;
+  state.copiedItem={...a,crop:a.crop?{...a.crop}:undefined};
+  state.copiedText=a.type==='text'?a.text:'';
+  updateToolbar();
+  setStatus('Selected item copied. Use Paste copied item on any PDF page.');
+  return true;
+}
+async function copySelectedFromButton(){
+  if(!rememberSelection())return;
+  if(state.copiedItem.type==='text' && navigator.clipboard?.writeText){
+    try{await navigator.clipboard.writeText(state.copiedText);}catch(_){/* Internal copy still works. */}
+  }
+}
+function pasteCopiedItem(){
+  if(!state.pdf || !state.copiedItem){setStatus('Select and copy an item first.');return false;}
+  const cloned=copyAnnotationForPage(state.copiedItem,pageBounds());
+  if(!cloned)return false;
+  addAnnotation(cloned);setTool('select');
+  setStatus('Copied item pasted. Drag to reposition it on this page.');
+  return true;
+}
+function canInterceptClipboard(event){
+  if(!state.pdf || !$('pasteDialog').hidden || $('autofillDialog').open || !$('cropDialog').hidden)return false;
+  if(event.target?.closest?.('input,textarea,select,[contenteditable="true"]'))return false;
+  if(window.getSelection()?.toString())return false; // Preserve normal browser text selection.
+  return true;
+}
+function handleCopy(event){
+  if(!canInterceptClipboard(event) || !activeAnnotation())return;
+  if(!rememberSelection())return;
+  // For selected text, put the actual words on the system clipboard.
+  // For images/rectangles, the toolbar's internal clipboard is always available.
+  if(state.copiedItem.type==='text'){
+    event.clipboardData?.setData('text/plain',state.copiedText);
+    event.preventDefault();
+  }
+}
+function handlePaste(event){
+  if(!canInterceptClipboard(event))return;
+  const file=Array.from(event.clipboardData?.files||[]).find(f=>['image/png','image/jpeg'].includes(f.type));
+  if(file){event.preventDefault();imageFromFile(file).catch(err=>setStatus('Could not paste image: '+err.message));return;}
+  const text=event.clipboardData?.getData('text/plain')||'';
+  if(text){
+    event.preventDefault();
+    if(state.copiedItem?.type==='text' && state.copiedText===text)pasteCopiedItem();
+    else insertPastedText(text);
+  }else if(state.copiedItem){event.preventDefault();pasteCopiedItem();}
+}
 function deleteSelected() {
   if(!activeAnnotation())return;
   activePage().annotations=activePage().annotations.filter(a=>a.id!==state.selectedId);
@@ -720,6 +829,16 @@ function bind() {
   $('pageStage').addEventListener('pointerdown',(e)=>{if(e.target===$('pdfCanvas')||e.target===$('annotationLayer')){state.selectedId=null;renderAnnotations();updateInspector();}});
   $('findSelectedImage').addEventListener('click',findSelectedImage);
   $('deleteSelection').addEventListener('click',deleteSelected);
+  $('copySelectionBtn').addEventListener('click',copySelectedFromButton);
+  $('duplicateSelectionBtn').addEventListener('click',()=>{if(rememberSelection())pasteCopiedItem();});
+  $('pasteCopiedBtn').addEventListener('click',pasteCopiedItem);
+  $('pasteTextBtn').addEventListener('click',openPasteDialog);
+  $('copyPageTextBtn').addEventListener('click',copyCurrentPageText);
+  $('pasteCancelBtn').addEventListener('click',closePasteDialog);
+  $('pasteInsertBtn').addEventListener('click',()=>{if(insertPastedText($('pasteDialogText').value))closePasteDialog();});
+  $('pasteDialog').addEventListener('pointerdown',e=>{if(e.target===$('pasteDialog'))closePasteDialog();});
+  window.addEventListener('copy',handleCopy);
+  window.addEventListener('paste',handlePaste);
   $('deselect').addEventListener('click',()=>{state.selectedId=null;renderAnnotations();updateInspector();});
   $('textInput').addEventListener('input',()=>{const a=activeAnnotation();if(a?.type==='text'){a.text=$('textInput').value;renderAnnotations();}else state.defaults.text=$('textInput').value;});
   $('fontSize').addEventListener('input',()=>{const v=Math.max(6,Math.min(100,Number($('fontSize').value)||18));const a=activeAnnotation();if(a?.type==='text'){a.size=v;renderAnnotations();}else state.defaults.size=v;});
@@ -753,6 +872,8 @@ function bind() {
   let resizeTimeout;window.addEventListener('resize',()=>{clearTimeout(resizeTimeout);resizeTimeout=setTimeout(()=>{if(state.pdf)renderPage();},200);});
   window.addEventListener('keydown',(e)=>{
     const tag=document.activeElement?.tagName;
+    if(e.key==='Escape' && !$('pasteDialog').hidden){closePasteDialog();return;}
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='d' && canInterceptClipboard(e) && activeAnnotation()){e.preventDefault();if(rememberSelection())pasteCopiedItem();return;}
     if(['INPUT','TEXTAREA'].includes(tag)||e.ctrlKey||e.metaKey||e.altKey)return;
     if(e.key==='Escape'){if(state.cropEditing){closeCropEditor();return;}state.selectedId=null;setTool('select');renderAnnotations();}
     if((e.key==='Delete'||e.key==='Backspace')&&activeAnnotation())deleteSelected();

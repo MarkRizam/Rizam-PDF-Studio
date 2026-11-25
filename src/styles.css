@@ -87,3 +87,13 @@
 .resume-record input{margin-top:3px;flex-shrink:0}
 .resume-preview-details>strong{display:block;margin-top:10px}
 .resume-preview-details>p{margin:4px 0 6px;font-size:12px;color:#4f6281}
+
+/* v0.7 copy/paste dialog: manual paste fallback never requests clipboard permission. */
+.paste-dialog[hidden]{display:none}
+.paste-dialog{position:fixed;inset:0;z-index:60;background:#122444ab;display:flex;align-items:center;justify-content:center;padding:16px}
+.paste-panel{width:min(620px,100%);background:white;border-radius:14px;padding:22px;box-shadow:0 20px 60px #0d1d3c55}
+.paste-panel h2{margin:0 0 8px;font-size:19px;color:#203452}
+.paste-panel p{font-size:12px;line-height:1.6;color:#64768e;margin:0 0 12px}
+.paste-panel textarea{display:block;width:100%;max-height:56vh;min-height:180px;resize:vertical;padding:12px;border:1px solid #cdd8e8;border-radius:8px;color:#1b2f4f;line-height:1.5;font-size:13px}
+.paste-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:13px}
+.paste-footer [hidden]{display:none}

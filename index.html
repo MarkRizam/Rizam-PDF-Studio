@@ -26,6 +26,9 @@
           <button class="tool" data-tool="cover"><span class="tool-icon">▢</span><span>Cover area</span><small>C</small></button>
           <button class="tool" data-tool="image"><span class="tool-icon">▧</span><span>Add image / signature</span><small>I</small></button>
           <button class="tool" data-tool="profile"><span class="tool-icon">✦</span><span>Place saved field</span><small>P</small></button>
+          <button id="pasteTextBtn" class="tool" type="button"><span class="tool-icon">⎘</span><span>Paste text</span><small>Ctrl+V</small></button>
+          <button id="pasteCopiedBtn" class="tool" type="button" disabled><span class="tool-icon">▣</span><span>Paste copied item</span></button>
+          <button id="copyPageTextBtn" class="tool" type="button" disabled><span class="tool-icon">▤</span><span>Copy page text</span></button>
           <div class="side-divider"></div>
           <div class="eyebrow">DOCUMENT</div>
           <button id="removePageBtn" class="tool" disabled><span class="tool-icon">✕</span><span>Delete current page</span></button>
@@ -56,7 +59,7 @@
             <button id="findSelectedImage" class="button subtle block">Find / bring image onto page</button>
           </div>
           <div id="profileInspector" class="inspector-section" hidden><label for="profileFieldSelect">Saved profile detail</label><select id="profileFieldSelect" class="inspector-select"></select><p class="property-hint">Click the PDF where the selected answer should go. Open Auto-fill form to edit your profile.</p></div>
-          <div id="selectionActions" class="inspector-section" hidden><button id="deleteSelection" class="button danger block">Delete selected item</button><button id="deselect" class="button subtle block">Deselect</button></div>
+          <div id="selectionActions" class="inspector-section" hidden><button id="copySelectionBtn" class="button subtle block" type="button">Copy selected item (Ctrl+C)</button><button id="duplicateSelectionBtn" class="button subtle block" type="button">Duplicate item (Ctrl+D)</button><button id="deleteSelection" class="button danger block">Delete selected item</button><button id="deselect" class="button subtle block">Deselect</button></div>
           <div class="safety"><span>ⓘ</span><div><strong>About Cover area</strong><p>This places a colored rectangle over the page. It is <em>not</em> secure redaction: the original content may still exist underneath.</p></div></div>
         </aside>
       </main>
@@ -136,6 +139,14 @@
       </div>
       <input type="file" id="resumeInput" accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,text/plain" hidden />
     </dialog>
+    <div id="pasteDialog" class="paste-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="pasteDialogTitle">
+      <div class="paste-panel">
+        <h2 id="pasteDialogTitle">Paste text into your PDF</h2>
+        <p id="pasteDialogHint">Press Ctrl+V in the box, then click Insert on page. Drag the inserted text into position.</p>
+        <textarea id="pasteDialogText" rows="8" placeholder="Paste text here (Ctrl+V)" aria-label="Text to insert into PDF"></textarea>
+        <div class="paste-footer"><button id="pasteCancelBtn" type="button" class="button subtle">Cancel</button><button id="pasteInsertBtn" type="button" class="button primary">Insert on page</button></div>
+      </div>
+    </div>
     <input type="file" id="pdfInput" accept="application/pdf,.pdf" hidden />
     <input type="file" id="imageInput" accept="image/png,image/jpeg" hidden />
     <script type="module" src="/src/main.js"></script>

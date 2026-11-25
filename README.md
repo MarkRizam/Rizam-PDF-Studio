@@ -74,3 +74,11 @@ For bugs, use the GitHub issue templates and include a **synthetic PDF** if a re
 Vanilla JavaScript, [Vite](https://vite.dev/), [PDF.js](https://mozilla.github.io/pdf.js/), and [pdf-lib](https://pdf-lib.js.org/). No built-in external upload endpoint or telemetry.
 
 Licensed under the [MIT License](LICENSE). This permits use, modification and redistribution, including commercial use, under the license conditions. Library dependencies have their own licenses.
+
+## Copy and paste (v0.7)
+
+- **Paste text:** Click **Paste text**, paste text into the dialog (Ctrl+V), then choose **Insert on page**. Drag the new text into position and edit it in **Properties**.
+- **Quick paste:** With the PDF editor active (not inside an input field), press **Ctrl+V** to insert plain text from another app. Pasted PNG/JPG images are also supported where the browser exposes them.
+- **Copy items:** Select an inserted text, image, cover or highlight, then click **Copy selected item**. Use **Paste copied item** on the current or another page. Ctrl+C / Ctrl+V work for text annotations; Ctrl+D quickly duplicates a selected annotation. Use the on-screen paste button for images when browser clipboard behavior varies.
+- **Copy PDF text:** **Copy page text** copies extractable text from the *entire current page* (not a selection). If clipboard access is denied, select the text in the dialog and manually copy it. Scanned/image-only PDFs need OCR, which is not included.
+- Clipboard operations are local to your browser. The editor does not upload the document or its contents. Copying may place text on your operating system clipboard.
