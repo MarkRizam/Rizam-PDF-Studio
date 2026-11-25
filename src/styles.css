@@ -80,3 +80,10 @@
 .resume-overwrite{display:flex;align-items:center;gap:8px;color:#546880;font-size:11px}
 .resume-overwrite input{accent-color:#2562d7}
 @media(max-width:700px){.resume-import{margin:0 15px 12px}.resume-import-top{flex-wrap:wrap}.resume-preview-details dl{grid-template-columns:1fr}.resume-preview-details dt{margin-top:6px}}
+
+/* Review actual extracted records before adding them to the profile. */
+.resume-records{display:grid;gap:5px;margin:6px 0 13px}
+.resume-record{display:flex;align-items:flex-start;gap:9px;padding:7px 9px;border:1px solid #d9e1ef;border-radius:7px;line-height:1.4;cursor:pointer}
+.resume-record input{margin-top:3px;flex-shrink:0}
+.resume-preview-details>strong{display:block;margin-top:10px}
+.resume-preview-details>p{margin:4px 0 6px;font-size:12px;color:#4f6281}

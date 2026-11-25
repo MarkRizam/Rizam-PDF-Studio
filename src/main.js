@@ -484,19 +484,41 @@ function clearResumePreview(){
 }
 function showResumePreview(file,result){
   const p=result.profile;
+  const detail=$('resumePreviewDetails');detail.replaceChildren();
   const fields=[['Full name',p.fullName],['Email',p.email],['Mobile',p.phone],['Address',p.address],['Nationality',p.nationality]]
     .filter(([,value])=>Boolean(value));
-  for(const [group,label] of [['education','Education'],['employment','Employment'],['skills','Skills'],['training','Training']]){
-    if(p[group].length)fields.push([label, `${p[group].length} entr${p[group].length===1?'y':'ies'}`]);
-  }
-  $('resumePreviewTitle').textContent=`Review ${file.name} (${result.recognized} extracted items)`;
   const dl=document.createElement('dl');
   for(const [label,value] of fields){
     const dt=document.createElement('dt');dt.textContent=label;
     const dd=document.createElement('dd');dd.textContent=value;
     dl.append(dt,dd);
   }
-  $('resumePreviewDetails').replaceChildren(dl);
+  detail.append(dl);
+  const groups=[
+    ['education','Education',e=>[e.qualification,e.institution,[e.from,e.to].filter(Boolean).join(' – ')].filter(Boolean).join(' · ')],
+    ['employment','Employment',e=>[e.lastPosition,e.employer,[e.from,e.to].filter(Boolean).join(' – ')].filter(Boolean).join(' · ')],
+    ['training','Training',e=>[e.certification,e.institution].filter(Boolean).join(' · ')],
+    ['skills','Skills',e=>e.name],
+  ];
+  for(const [group,label,format] of groups){
+    if(!p[group].length)continue;
+    const heading=document.createElement('strong');heading.textContent=label+' ('+p[group].length+')';
+    const description=document.createElement('p');
+    description.textContent=group==='employment'||group==='education'||group==='training'
+      ? 'Select only entries you have checked against your résumé. Nothing in this section is selected automatically.'
+      : 'Uncheck any incorrect skills.';
+    const list=document.createElement('div');list.className='resume-records';
+    for(const [index,entry] of p[group].entries()){
+      const row=document.createElement('label');row.className='resume-record';
+      const checkbox=document.createElement('input');checkbox.type='checkbox';
+      checkbox.dataset.resumeGroup=group;checkbox.dataset.resumeIndex=String(index);
+      checkbox.checked=group==='skills';
+      const value=document.createElement('span');value.textContent=format(entry);
+      row.append(checkbox,value);list.append(row);
+    }
+    detail.append(heading,description,list);
+  }
+  $('resumePreviewTitle').textContent='Review '+file.name+' ('+result.recognized+' extracted items)';
   const list=$('resumeWarnings');list.replaceChildren();
   for(const warning of result.warnings){const li=document.createElement('li');li.textContent=warning;list.append(li);}
   $('resumePreview').hidden=false;
@@ -525,7 +547,13 @@ function applyImportedResume(){
   if(!state.resumeImport)return;
   // Read any unsaved edits before merging. We never overwrite profile inputs silently.
   const overwrite=$('resumeOverwrite').checked;
-  const merge=mergeResumeProfile(readProfileForm(),state.resumeImport.profile,{overwrite});
+  // Import only approved records; unverified education and work start unchecked.
+  const accepted=cleanProfile(state.resumeImport.profile);
+  for(const group of ['education','employment','training','skills']){
+    accepted[group]=accepted[group].filter((item,index)=>
+      $('resumePreviewDetails').querySelector('input[data-resume-group="'+group+'"][data-resume-index="'+index+'"]')?.checked===true);
+  }
+  const merge=mergeResumeProfile(readProfileForm(),accepted,{overwrite});
   writeProfileForm(merge.profile);
   state.profile=merge.profile;
   updateProfileFieldSelect();
@@ -584,6 +612,12 @@ function bindProfile() {
   } catch(e) {console.warn('Profile storage unavailable:',e);}
   updateProfileFieldSelect();
   $('autoFillBtn').addEventListener('click',openProfileEditor);
+  $('clearEmploymentRows').addEventListener('click',()=>{
+    if(!window.confirm('Clear every employment row in the current form? This cannot be undone, but does not change an already exported PDF.'))return;
+    $('employmentRows').replaceChildren();
+    state.profile=readProfileForm();updateProfileFieldSelect();
+    profileMessage('Employment entries cleared from the current profile. Re-import and select only verified job records. Save on this device to update a previously saved profile.');
+  });
   $('importResumeBtn').addEventListener('click',()=> $('resumeInput').click());
   $('resumeInput').addEventListener('change',async(e)=>{
     const file=e.target.files?.[0];e.target.value='';

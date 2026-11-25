@@ -1,7 +1,7 @@
 {
   "name": "rizam-pdf-studio",
   "private": true,
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "description": "A privacy-first, local browser PDF editor prototype",
   "engines": {

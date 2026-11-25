@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.2 - 2026-11-25
+
+- Prevented résumé education, dates and responsibility sentences from becoming invented employment records. Employment now requires a plausible employer, title and date range.
+- Show the actual extracted education and employment entries before import; those entries require explicit selection.
+- Added a guarded button to clear incorrect employment entries from the current profile.
+- Added regression tests for false employer/title matches.
+
 ## 0.6.1 - 2026-11-25
 
 - Fixed résumé PDF upload failing with `pdf.destroy is not a function` after extraction.

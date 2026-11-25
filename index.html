@@ -82,7 +82,7 @@
         </div>
         <div id="resumePreview" class="resume-preview" hidden>
           <div class="resume-preview-header"><strong id="resumePreviewTitle">Review extracted details</strong><button id="discardResumeBtn" class="button subtle" type="button">Discard import</button></div>
-          <p class="resume-preview-hint">These are suggestions, not verified facts. Confirm every field before exporting a job application.</p>
+          <p class="resume-preview-hint">These are unverified suggestions. Check each education, employment and training entry to include it. Inaccurate records will not be imported unless you select them.</p>
           <div id="resumePreviewDetails" class="resume-preview-details"></div>
           <ul id="resumeWarnings" class="resume-warnings"></ul>
           <div class="resume-preview-actions"><label class="resume-overwrite"><input id="resumeOverwrite" type="checkbox" /> Replace existing matching details</label><button id="applyResumeBtn" class="button primary" type="button">Use extracted details</button></div>
@@ -110,7 +110,7 @@
         </details>
         <details><summary>2. Education</summary><div id="educationRows" class="profile-rows"></div><button type="button" class="button subtle add-row" data-add-group="education">+ Add education</button></details>
         <details><summary>3. Training and certifications</summary><div id="trainingRows" class="profile-rows"></div><button type="button" class="button subtle add-row" data-add-group="training">+ Add training</button></details>
-        <details><summary>4. Employment history (most recent first)</summary><div id="employmentRows" class="profile-rows"></div><button type="button" class="button subtle add-row" data-add-group="employment">+ Add employer</button></details>
+        <details><summary>4. Employment history (most recent first)</summary><div id="employmentRows" class="profile-rows"></div><button type="button" class="button subtle add-row" data-add-group="employment">+ Add employer</button> <button type="button" class="button subtle add-row" id="clearEmploymentRows">Clear employment entries</button></details>
         <details><summary>5. Computer skills</summary><div id="skillsRows" class="profile-rows"></div><button type="button" class="button subtle add-row" data-add-group="skills">+ Add skill</button></details>
         <details><summary>6. Application-specific answers</summary>
           <div class="profile-fields">

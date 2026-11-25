@@ -121,3 +121,51 @@ test('PDF import disposes its loading task on extraction failure',async()=>{
   await assert.rejects(readResumeFile(file,reader),/Unusable page/);
   assert.equal(destroyed,1);
 });
+
+
+test('MBA university line and responsibility prose never become employment records',()=>{
+  const fake=`Amina Rahman
+Email: amina@example.com
+Education
+MSc. (MBA) University Technology Malaysia in 2012. 2014
+Work Experience
+MSc. (MBA) University Technology Malaysia in 2012. 2014
+2012 - 2014
+inhouse developer team, guide and lead the team and develop new internal tools
+2018 - 2022
+Technical Skills
+Python, Docker`;
+  const result=extractResumeProfile(fake);
+  assert.equal(result.profile.employment.length,0);
+  assert.match(result.warnings.join(' '),/not.*confident|could not be safely matched/i);
+});
+
+test('employment only includes complete dated role and employer pairs',()=>{
+  const sample=`Amina Rahman
+Email: amina@example.com
+Work Experience
+Senior Software Engineer | Example Technology Sdn Bhd
+Jan 2021 - Present
+- Built production APIs
+Backend Developer
+Bright Labs
+2018 - 2020
+- Wrote tests
+University Example - Master of Science
+2012 - 2014
+Technical Skills
+Python`;
+  const result=extractResumeProfile(sample);
+  assert.equal(result.profile.employment.length,2);
+  assert.equal(result.profile.employment[0].employer,'Example Technology Sdn Bhd');
+  assert.equal(result.profile.employment[1].lastPosition,'Backend Developer');
+  assert.equal(result.profile.employment[1].employer,'Bright Labs');
+  assert.ok(!result.profile.employment.some(e=>/university|master/i.test(e.employer)));
+});
+
+test('undated incomplete jobs are omitted rather than guessed',()=>{
+  const text='Amina Rahman\nEmail: amina@example.com\nEmployment History\nEngineer | Example Company\n- Built software\nProjects\nMy project';
+  const result=extractResumeProfile(text);
+  assert.deepEqual(result.profile.employment,[]);
+  assert.match(result.warnings.join(' '),/manually/i);
+});

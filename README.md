@@ -41,9 +41,11 @@ For tests: `npm run check`. For a production build: `npm run build` (dependency 
 1. Open the target job application PDF with **Open PDF**.
 2. Click **Auto-fill form**, then **Upload résumé**.
 3. Choose a résumé in **PDF, DOCX or TXT** format (maximum 15 MB).
-4. Inspect the extracted details and warnings. Click **Use extracted details** to populate blank profile fields. Existing values are preserved unless you explicitly tick **Replace existing matching details**.
+4. Check each suggested education, employment and training record in the preview. These records start **unchecked** because the PDF reader can mix columns and headings. Select only records you verified, then choose **Use extracted details**. Existing values are preserved unless you explicitly tick **Replace existing matching details**.
 5. Open and check the **Personal, Education, Employment, Skills** and other profile sections. The importer does **not** invent a vacancy title, salary, notice period, identity card, birth date, signature, health/legal declarations or motivation statement.
 6. Click **Auto-fill matching fields** to apply the profile to the verified four-page PROPPY PDF layout. For other PDF templates, choose **Place fields manually**. Review all pages before **Export PDF**.
+
+To remove incorrect employment records imported by an earlier version, open **Employment history** and use **Remove** on individual rows, or click **Clear employment entries** (asks for confirmation). Clear any already auto-filled PDF annotations by applying Auto-fill again after correcting the profile.
 
 The résumé is processed in your browser using PDF.js or built-in DOCX text extraction; no résumé upload endpoint or AI service is used. Scanned PDF images, unusual columns, tables and inconsistent résumé formatting may not be extracted accurately. **OCR is not supported yet.** Imported data remains in memory unless you explicitly save your career profile. Review every extracted field, especially dates and employment entries, before submitting to an employer.
 

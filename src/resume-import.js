@@ -115,63 +115,80 @@ function parseEducation(lines, warnings) {
   if(lines.length && !result.length)warnings.push('Education section needs manual review.');
   return result.slice(0,15);
 }
+/**
+ * Require a date range and independently plausible title and employer. PDF
+ * reading order can interleave education, job history and responsibilities.
+ */
+function plausibleJobTitle(value){
+  const s=cleanCell(value);
+  if(!s || s.length>78 || s.split(/\s+/).length>10 || /[,;.!?]/.test(s))return false;
+  if(degreeRe.test(s) || !titleRe.test(s))return false;
+  if(/\b(?:responsible|responsibilities|worked|working|guided?|built|build|developed|develop|created|implemented|maintained|collaborated|delivered|managed|managing|designed|designing|oversaw|helped|involved|using|with|the team|new system|and develop)\b/i.test(s))return false;
+  return true;
+}
+function plausibleEmployer(value){
+  const s=cleanCell(value);
+  if(!s || s.length>100 || s.split(/\s+/).length>12 || /[,;!?]/.test(s))return false;
+  if(degreeRe.test(s) || /\b(?:graduated|studied|attended|earned|obtained|in (?:19|20)\d{2}|guide|developed|implemented|maintained|responsible|working)\b/i.test(s))return false;
+  if(plausibleJobTitle(s))return false;
+  const capWords=s.match(/\b[A-Z][\p{L}\d&.'-]*/gu)||[];
+  return employerRe.test(s) || capWords.length>=2;
+}
+function employmentPair(value){
+  const parts=String(value).split(/\s*\|\s*|\s+[-–—]\s+|\s+@\s+/).map(cleanCell).filter(Boolean);
+  if(parts.length!==2)return null;
+  if(plausibleJobTitle(parts[0]) && plausibleEmployer(parts[1]))return {lastPosition:parts[0],employer:parts[1]};
+  if(plausibleEmployer(parts[0]) && plausibleJobTitle(parts[1]))return {lastPosition:parts[1],employer:parts[0]};
+  return null;
+}
 function parseEmployment(lines,warnings) {
   const items=[];
-  let current=null;
-  function flush(){if(current && (current.employer || current.lastPosition)){items.push(current);}current=null;}
+  const records=lines.map((raw,index)=>{
+    const range=splitRange(withoutBullet(raw));
+    // A date-only line has empty text; never interpret dates as companies.
+    const text=(range?range.rest:withoutBullet(raw)).trim();
+    return {index,raw,range,text,bullet:/^\s*[•●▪*\-–—]\s+/.test(raw)};
+  });
+  const dateRows=records.filter(r=>r.range);
   const fresh=()=>({employer:'',from:'',to:'',startingPosition:'',lastPosition:'',duties:'',reason:'',startingSalary:'',lastSalary:''});
-  for(let i=0;i<lines.length;i++){
-    const raw=lines[i],line=withoutBullet(raw);
-    const range=splitRange(line);
-    const text=(range?.rest||line).replace(/\s*[|–—]\s*$/,'').trim();
-    const divided=text.split(/\s*\|\s*|\s+[-–—]\s+/).map(cleanCell).filter(Boolean);
-    let position='',employer='';
-    if(divided.length>=2){
-      const a=divided[0],b=divided[1];
-      if(titleRe.test(a)&&!titleRe.test(b)){position=a;employer=b;}
-      else if(employerRe.test(a)&&titleRe.test(b)){employer=a;position=b;}
+  let skipped=0;
+  for(let k=0;k<dateRows.length;k++){
+    const date=dateRows[k];
+    const previous=k>0?dateRows[k-1].index:-1;
+    const next=k+1<dateRows.length?dateRows[k+1].index:records.length;
+    const window=records.filter(r=>r.index>=Math.max(previous+1,date.index-3) &&
+      r.index<=Math.min(next-1,date.index+2) && !r.bullet &&
+      !degreeRe.test(r.text) && !getHeading(r.text) && r.text.length<=125);
+    let candidate=null;
+    for(const entry of [...window].sort((a,b)=>Math.abs(a.index-date.index)-Math.abs(b.index-date.index))){
+      candidate=employmentPair(entry.text);
+      if(candidate)break;
     }
-    const isRangeOnly=range && !text;
-    if(isRangeOnly && current){current.from=range.from;current.to=range.to;continue;}
-    if(position && employer){
-      flush();current=fresh();current.lastPosition=position;current.employer=employer;
-      if(range){current.from=range.from;current.to=range.to;}
-      continue;
+    if(!candidate){
+      const roles=window.filter(r=>plausibleJobTitle(r.text));
+      const employers=window.filter(r=>plausibleEmployer(r.text));
+      const matches=[];
+      for(const role of roles)for(const employer of employers){
+        if(role.index===employer.index || Math.abs(role.index-employer.index)>2)continue;
+        matches.push({role,employer,score:Math.abs(role.index-date.index)+Math.abs(employer.index-date.index)});
+      }
+      matches.sort((a,b)=>a.score-b.score);
+      if(matches[0])candidate={lastPosition:cleanCell(matches[0].role.text),employer:cleanCell(matches[0].employer.text)};
     }
-    // A date on the same line as a title, followed by the employer or vice versa.
-    if(range && titleRe.test(text) && text.length<110 && !/^(?:developed|managed|built|created|implemented)\b/i.test(text)){
-      if(current?.lastPosition && current.employer)flush();
-      if(!current)current=fresh();
-      current.lastPosition=current.lastPosition||cleanCell(text);
-      current.from=range.from;current.to=range.to;
-      continue;
+    if(!candidate){skipped++;continue;}
+    const item=fresh();
+    item.lastPosition=candidate.lastPosition;
+    item.employer=candidate.employer;
+    item.from=date.range.from;
+    item.to=date.range.to;
+    for(const r of records.slice(date.index+1,next)){
+      if(r.bullet && r.text.length<=280)item.duties=[item.duties,withoutBullet(r.raw)].filter(Boolean).join('; ').slice(0,1000);
+      else if(!r.bullet && (plausibleJobTitle(r.text) || employmentPair(r.text)))break;
     }
-    if(range && employerRe.test(text) && text.length<110){
-      if(current?.employer && current.lastPosition)flush();
-      if(!current)current=fresh();
-      current.employer=current.employer||cleanCell(text);
-      current.from=range.from;current.to=range.to;
-      continue;
-    }
-    if(!range && titleRe.test(text) && text.length<85 && !/^[-•*]/.test(raw) && !/^\b(?:developed|built|managed|worked|implemented|led|created|improved|designed|maintained)\b/i.test(text)){
-      if(current?.lastPosition && current.employer)flush();
-      if(!current)current=fresh();
-      if(!current.lastPosition)current.lastPosition=cleanCell(text);
-      continue;
-    }
-    if(!range && employerRe.test(text) && text.length<115 && !/^[-•*]/.test(raw) && !/^(?:developed|built|managed|worked|implemented|led|created|improved|designed|maintained)\b/i.test(text)){
-      if(current?.employer && current.lastPosition)flush();
-      if(!current)current=fresh();
-      if(!current.employer)current.employer=cleanCell(text);
-      continue;
-    }
-    if(current && /^[•*\-–]\s+/.test(raw) && line.length<280){
-      current.duties=[current.duties,line].filter(Boolean).join('; ').slice(0,1000);
-    }
+    if(!items.some(e=>e.employer.toLowerCase()===item.employer.toLowerCase() && e.lastPosition.toLowerCase()===item.lastPosition.toLowerCase() && e.from===item.from))items.push(item);
   }
-  flush();
-  if(lines.length&&!items.length)warnings.push('Employment section needs manual review.');
-  if(items.some(e=>!e.employer || !e.lastPosition))warnings.push('Some employment entries are incomplete; confirm employer and job title.');
+  if(lines.length && !items.length)warnings.push('No employment records were confidently matched. Add employer, job title and dates manually.');
+  if(skipped)warnings.push(String(skipped)+' date range(s) could not be safely matched to both an employer and a job title; those records were not imported.');
   return items.slice(0,15);
 }
 function parseSkills(lines){
