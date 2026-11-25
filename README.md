@@ -82,3 +82,31 @@ Licensed under the [MIT License](LICENSE). This permits use, modification and re
 - **Copy items:** Select an inserted text, image, cover or highlight, then click **Copy selected item**. Use **Paste copied item** on the current or another page. Ctrl+C / Ctrl+V work for text annotations; Ctrl+D quickly duplicates a selected annotation. Use the on-screen paste button for images when browser clipboard behavior varies.
 - **Copy PDF text:** **Copy page text** copies extractable text from the *entire current page* (not a selection). If clipboard access is denied, select the text in the dialog and manually copy it. Scanned/image-only PDFs need OCR, which is not included.
 - Clipboard operations are local to your browser. The editor does not upload the document or its contents. Copying may place text on your operating system clipboard.
+
+## Windows desktop application (v0.8)
+
+The browser edition remains available at `npm run dev`. The Windows desktop edition can open PDFs directly from File Explorer after installing its `.exe` installer.
+
+### Download and install on Windows 11
+
+1. On the GitHub repository, open **Actions → Windows Desktop Installer**.
+2. Open the most recent successful workflow run for `main`. Under **Artifacts**, download **Rizam-PDF-Studio-Windows-Installer**.
+3. Extract the ZIP and run the installer `.exe`. Per-machine installation may require administrator permission to register the `.pdf` file association.
+4. In Windows **Settings → Apps → Default apps**, search for `.pdf`, click Adobe Acrobat, and select **Rizam PDF Studio**. Windows requires you to choose your own default.
+5. Double-click a PDF in File Explorer to open it in Rizam PDF Studio. Files remain on your device.
+
+> The installer is an **unsigned development build**; Windows SmartScreen may display an unknown publisher warning. Download only from the repository Actions page. Please test the installed application on Windows before relying on it.
+
+### Build locally
+
+Run in PowerShell (Node.js 22.12+):
+
+```powershell
+npm install
+npm run check
+npm run desktop:win
+```
+
+The installer is written to `release/`. To run a desktop window without installing, use `npm run desktop:dev`.
+
+Electron renders Vite's static bundle offline using a sandboxed preload bridge. It receives the PDF file selected in Windows Explorer, including when the app is already running. It does not silently change Windows default apps, create accounts, or upload PDFs.

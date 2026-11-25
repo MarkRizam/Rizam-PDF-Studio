@@ -883,4 +883,16 @@ function bind() {
     if(e.key==='ArrowRight'&&!$('nextBtn').disabled)$('nextBtn').click();
   });
 }
+// Electron desktop: receive a PDF when opened from Windows Explorer.
+// The preload bridge supplies only the chosen file's contents, never a path API.
+if(window.rizamDesktop?.onOpenPDF){
+  window.rizamDesktop.onOpenPDF(async ({name,base64})=>{
+    try{
+      if(typeof base64!=='string' || base64.length>85*1024*1024)throw new Error('PDF exceeds the supported size limit.');
+      const binary=atob(base64), bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+      const file=new File([bytes],name||'document.pdf',{type:'application/pdf'});
+      await openPDF(file);
+    }catch(err){setStatus('Unable to open PDF from Windows: '+err.message);}
+  });
+}
 bind(); updateToolbar(); updateInspector();

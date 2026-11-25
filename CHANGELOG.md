@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 - 2026-11-25
+
+- Added Windows desktop installer build, `.pdf` file association registration and offline Electron wrapper.
+- Open PDFs from Windows File Explorer and forward subsequent double-clicks to the already-running app.
+- Made Vite asset URLs relative to support packaged `file://`.
+- Added installer workflow, desktop tests and Windows default-app instructions.
+
 ## 0.7.0 - 2026-11-25
 
 - Added Paste text dialog and native Ctrl+V plain-text insertion onto the current PDF page.

@@ -18,3 +18,5 @@ Thumbs.db
 *.webp
 # Do not accidentally commit user-created PDFs, exported forms or screenshots.
 # Test fixtures must be explicitly reviewed before whitelisting.
+
+release/
