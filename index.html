@@ -21,6 +21,7 @@
         <aside class="left-sidebar">
           <div class="eyebrow">TOOLS</div>
           <button class="tool active" data-tool="select"><span class="tool-icon">↖</span><span>Select / move</span><small>V</small></button>
+          <button class="tool" data-tool="text-select" type="button"><span class="tool-icon">▤</span><span>Select PDF text</span><small>S</small></button>
           <button class="tool" data-tool="text"><span class="tool-icon tool-icon-text">T</span><span>Add text</span><small>T</small></button>
           <button class="tool" data-tool="highlight"><span class="tool-icon yellow">▰</span><span>Highlight</span><small>H</small></button>
           <button class="tool" data-tool="cover"><span class="tool-icon">▢</span><span>Cover area</span><small>C</small></button>
@@ -28,11 +29,12 @@
           <button class="tool" data-tool="profile"><span class="tool-icon">✦</span><span>Place saved field</span><small>P</small></button>
           <button id="pasteTextBtn" class="tool" type="button"><span class="tool-icon">⎘</span><span>Paste text</span><small>Ctrl+V</small></button>
           <button id="pasteCopiedBtn" class="tool" type="button" disabled><span class="tool-icon">▣</span><span>Paste copied item</span></button>
+          <button id="copySelectedTextBtn" class="tool" type="button" disabled><span class="tool-icon">⎘</span><span>Copy selected text</span></button>
           <button id="copyPageTextBtn" class="tool" type="button" disabled><span class="tool-icon">▤</span><span>Copy page text</span></button>
           <div class="side-divider"></div>
           <div class="eyebrow">DOCUMENT</div>
           <button id="removePageBtn" class="tool" disabled><span class="tool-icon">✕</span><span>Delete current page</span></button>
-          <div class="sidebar-note"><strong>Editing tip</strong><span>Choose a tool, then click the document. For highlights and covers, drag to draw a rectangle.</span></div>
+          <div class="sidebar-note"><strong>Editing tip</strong><span>Choose <b>Select PDF text</b>, drag across original words, then press Ctrl+C. Use Select / move to reposition inserted text and images. Scanned pages need OCR.</span></div>
         </aside>
         <section class="document-area">
           <div id="documentToolbar" class="document-toolbar">
@@ -41,7 +43,7 @@
           </div>
           <div id="canvasScroll" class="canvas-scroll">
             <div id="welcome" class="welcome"><div class="welcome-icon">▤</div><div class="welcome-tag">YOUR PRIVATE PDF WORKSPACE</div><h1>Your document, your edits.</h1><p>Open a PDF to add text, highlight important parts, cover areas, and insert images or signatures. Everything happens right here in your browser.</p><button id="welcomeOpen" class="button primary large">Choose a PDF <span>↗</span></button><div class="drop-hint">or drag and drop your PDF here</div><div class="welcome-foot"><span>✓ No account needed</span><span>✓ No server upload</span><span>✓ Save a new copy</span></div></div>
-            <div id="pageStage" class="page-stage" hidden><canvas id="pdfCanvas"></canvas><div id="annotationLayer" class="annotation-layer"></div><div id="drawLayer" class="draw-layer" hidden></div></div>
+            <div id="pageStage" class="page-stage" hidden><canvas id="pdfCanvas"></canvas><div id="textLayer" class="textLayer" aria-label="Selectable text on this PDF page"></div><div id="annotationLayer" class="annotation-layer"></div><div id="drawLayer" class="draw-layer" hidden></div></div>
           </div>
           <div class="statusbar"><span id="status">Ready. Open a PDF to begin.</span><span id="pageDetails"></span></div>
         </section>

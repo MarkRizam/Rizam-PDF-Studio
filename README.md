@@ -4,7 +4,7 @@
 
 Rizam PDF Studio is an experimental browser-based PDF editor. Open a PDF on your own computer, add text, highlights, photographs and signatures, crop/resize images, and export a new PDF. A reusable career profile can help populate job application forms. The code is open for review and contributions.
 
-> **Project status: early prototype (v0.6.0).** Automated source and geometry tests pass, but end-to-end browser and build verification is still needed. Inspect every exported PDF carefully before using it for employment, legal or other important purposes.
+> **Project status: early prototype (v0.9.0).** Automated source and geometry tests pass, but end-to-end browser and build verification is still needed. Inspect every exported PDF carefully before using it for employment, legal or other important purposes.
 
 ## Features
 
@@ -110,3 +110,13 @@ npm run desktop:win
 The installer is written to `release/`. To run a desktop window without installing, use `npm run desktop:dev`.
 
 Electron renders Vite's static bundle offline using a sandboxed preload bridge. It receives the PDF file selected in Windows Explorer, including when the app is already running. It does not silently change Windows default apps, create accounts, or upload PDFs.
+
+## Selecting and copying original PDF text (v0.9)
+
+1. Open a **text-based PDF** in the browser or desktop application.
+2. Click **Select PDF text** in the left sidebar (shortcut: `S`).
+3. Drag over a word, sentence or paragraph. The highlighted words are real selectable text, not an image.
+4. Press **Ctrl+C** (or click **Copy selected text**) and paste into your destination.
+5. Use **Select / move** (shortcut: `V`) to manipulate the text, images, highlights and shapes **added by our editor**. Switch back to **Select PDF text** when copying original words.
+
+**Known limits:** This does not edit existing PDF words; it makes their existing text selectable and copyable. Image-only/scanned PDFs still require OCR, which is not implemented. Some PDFs have restricted or imperfect text extraction or unusual layouts. The PDF.js text layer works for documents with extractable text; verify selection alignment on your own files.

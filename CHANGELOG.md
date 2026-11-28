@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0 - 2026-11-28
+
+- Added selectable and copyable **original PDF text** using PDF.js's native TextLayer.
+- Added explicit **Select PDF text** mode, Ctrl+C native selection and a Copy selected text button.
+- Preserved normal Move/Select for inserted annotations and prevented the internal clipboard from overriding selected PDF text.
+- Added tests for layer stacking, selection controls and native copy handling.
+
 ## 0.8.0 - 2026-11-25
 
 - Added Windows desktop installer build, `.pdf` file association registration and offline Electron wrapper.

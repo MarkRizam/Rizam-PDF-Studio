@@ -1,7 +1,7 @@
 {
   "name": "rizam-pdf-studio",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "description": "Privacy-first open-source PDF editor for browser and Windows desktop",
   "engines": {
@@ -11,7 +11,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "check": "node --check src/main.js && node --check src/geometry.js && node --check src/image-edit.js && node --check src/form-autofill.js && node --check src/resume-import.js && node --check src/clipboard-utils.js && node tests/verify-source.mjs && node --test tests/geometry.test.mjs tests/image-edit.test.mjs tests/form-autofill.test.mjs tests/resume-import.test.mjs tests/clipboard-utils.test.mjs && node --test tests/desktop.test.mjs",
+    "check": "node --check src/main.js && node --check src/geometry.js && node --check src/image-edit.js && node --check src/form-autofill.js && node --check src/resume-import.js && node --check src/clipboard-utils.js && node tests/verify-source.mjs && node --test tests/geometry.test.mjs tests/image-edit.test.mjs tests/form-autofill.test.mjs tests/resume-import.test.mjs tests/clipboard-utils.test.mjs && node --test tests/desktop.test.mjs && node --test tests/text-selection.test.mjs",
     "desktop:dev": "npm run build && electron .",
     "desktop:win": "npm run build && electron-builder --win nsis --x64 --publish never"
   },

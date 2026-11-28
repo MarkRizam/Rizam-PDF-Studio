@@ -1,6 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import 'pdfjs-dist/web/pdf_viewer.css';
 import './styles.css';
 import { annotationViewportBounds } from './geometry.js';
 import { fullCrop, normalizedCrop, isFullCrop, centerCropToAspect, croppedAspectRatio, moveCrop, resizeCrop, resizeScreenRect, clamp } from './image-edit.js';
@@ -13,7 +14,7 @@ const $ = (id) => document.getElementById(id);
 const state = {
   bytes: null, pdf: null, filename: '', pages: [], pageIndex: 0,
   tool: 'select', selectedId: null, viewport: null, scale: 1,
-  renderTask: null, renderSerial: 0, nextId: 1,
+  renderTask: null, textLayerTask: null, renderSerial: 0, pageHasText: false, selectedPdfText: '', nextId: 1,
   defaults: { text: 'Your text here', size: 18, color: '#18253c', rectColor: '#fbe06c', opacity: 0.35 },
   pendingImage: null, drawing: null, dragging: null, resizing: null, cropEditing: null, profile: emptyProfile(), resumeImport: null, copiedItem: null, copiedText: '',
 };
@@ -31,14 +32,19 @@ function setTool(tool) {
   document.querySelectorAll('[data-tool]').forEach((el) => el.classList.toggle('active', el.dataset.tool === tool));
   const draw = ['text', 'highlight', 'cover', 'image', 'profile'].includes(tool);
   $('drawLayer').hidden = !draw || !state.pdf;
+  $('pageStage').classList.toggle('text-select-mode',tool === 'text-select');
+  if(tool === 'text-select')state.selectedId=null;
+  if(tool !== 'text-select'){state.selectedPdfText='';}
+  $('copySelectedTextBtn').disabled=!(tool === 'text-select' && state.selectedPdfText);
   if (tool === 'image' && !state.pendingImage) $('imageInput').click();
   updateInspector();
-  if (state.pdf) setStatus(tool === 'select' ? 'Select an item to move or edit it.' : tool === 'text' ? 'Click the page to add text.' : tool === 'image' ? 'Choose a PNG/JPG image. It will appear on the current page automatically.' : tool === 'profile' ? 'Choose a saved detail on the right, then click the PDF to place it.' : 'Drag on the page to draw a rectangle.');
+  if (state.pdf) setStatus(tool === 'text-select' ? (state.pageHasText ? 'Drag to highlight original PDF text; press Ctrl+C or click Copy selected text.' : 'This page has no selectable text. Scanned/image PDFs need OCR.') : tool === 'select' ? 'Select an item to move or edit it.' : tool === 'text' ? 'Click the page to add text.' : tool === 'image' ? 'Choose a PNG/JPG image. It will appear on the current page automatically.' : tool === 'profile' ? 'Choose a saved detail on the right, then click the PDF to place it.' : 'Drag on the page to draw a rectangle.');
 }
 function updateToolbar() {
   const ok = state.pages.length > 0;
   $('saveBtn').disabled = !ok;
   $('copyPageTextBtn').disabled = !ok;
+  $('copySelectedTextBtn').disabled = !ok || state.tool !== 'text-select' || !state.selectedPdfText;
   $('pasteCopiedBtn').disabled = !ok || !state.copiedItem;
   $('removePageBtn').disabled = !ok || state.pages.length === 1;
   $('prevBtn').disabled = !ok || state.pageIndex === 0;
@@ -57,7 +63,7 @@ async function openPDF(file) {
     const pdf = await pdfjsLib.getDocument({data: bytes.slice()}).promise;
     state.pdf = pdf; state.bytes = bytes; state.filename = file.name;
     state.pages = Array.from({length: pdf.numPages}, (_, i) => ({sourceIndex: i, annotations: []}));
-    state.pageIndex = 0; state.selectedId = null; state.pendingImage = null; state.copiedItem = null; state.copiedText='';
+    state.pageIndex = 0; state.selectedId = null; state.pendingImage = null; state.copiedItem = null; state.copiedText=''; state.pageHasText=false; state.selectedPdfText='';
     $('welcome').hidden = true; $('pageStage').hidden = false;
     setTool('select'); updateToolbar(); updateInspector();
     await renderPage();
@@ -72,6 +78,15 @@ async function openPDF(file) {
 async function renderPage() {
   if (!state.pdf || !activePage()) return;
   const serial = ++state.renderSerial;
+  // A user can switch pages while the previous text layer is still loading.
+  // Cancel that render before creating a new layer to avoid stale selections.
+  if(state.textLayerTask){
+    try{state.textLayerTask.cancel();}catch(_){/* Expected during page changes. */}
+    state.textLayerTask=null;
+  }
+  $('textLayer').replaceChildren();
+  state.pageHasText=false;state.selectedPdfText='';
+  $('copySelectedTextBtn').disabled=true;
   if (state.renderTask) {
     try { state.renderTask.cancel(); await state.renderTask.promise; } catch (_) { /* normal cancellation */ }
     state.renderTask = null;
@@ -92,9 +107,82 @@ async function renderPage() {
   try { await state.renderTask.promise; } catch (e) { if (e.name !== 'RenderingCancelledException') throw e; }
   if (serial !== state.renderSerial) return;
   state.renderTask = null;
+  try{await renderSelectableText(page,vp,serial);}
+  catch(err){
+    if(serial!==state.renderSerial)return;
+    $('textLayer').replaceChildren();state.pageHasText=false;
+    console.warn('Selectable PDF text unavailable:',err);
+    if(state.tool==='text-select')setStatus('Could not display selectable text on this page. You can still use Copy page text.');
+  }
+  if(serial!==state.renderSerial)return;
   renderAnnotations(); updateToolbar(); updateInspector();
   $('pageDetails').textContent = `${Math.round(base.width)} × ${Math.round(base.height)} pt`;
 }
+
+/**
+ * The canvas only draws pixels. PDF.js TextLayer adds precisely positioned,
+ * invisible selectable text on top. It must use the SAME viewport as canvas.
+ * No OCR: image-only scans naturally have no text content to render.
+ */
+async function renderSelectableText(page,viewport,serial){
+  const container=$('textLayer');
+  container.replaceChildren();
+  container.style.setProperty('--scale-factor',String(viewport.scale));
+  container.style.setProperty('--total-scale-factor',String(viewport.scale));
+  const content=await page.getTextContent();
+  if(serial!==state.renderSerial)return;
+  if(!(content.items||[]).some(item=>typeof item.str==='string' && item.str.trim())){
+    state.pageHasText=false;
+    if(state.tool==='text-select')setStatus('No selectable text on this page. A scanned/image PDF requires OCR.');
+    return;
+  }
+  if(typeof pdfjsLib.TextLayer!=='function')throw new Error('PDF.js text layer is unavailable.');
+  const task=new pdfjsLib.TextLayer({textContentSource:content,container,viewport});
+  state.textLayerTask=task;
+  try{
+    await task.render();
+    if(serial!==state.renderSerial)return;
+    state.pageHasText=true;
+  }finally{
+    if(state.textLayerTask===task)state.textLayerTask=null;
+  }
+}
+function captureSelectedPdfText(){
+  if(state.tool!=='text-select' || !state.pdf)return;
+  const selection=window.getSelection();
+  const layer=$('textLayer');
+  if(!selection || selection.isCollapsed ||
+     !layer.contains(selection.anchorNode) ||
+     !layer.contains(selection.focusNode))return;
+  const value=selection.toString();
+  if(!value.trim())return;
+  state.selectedPdfText=value;
+  $('copySelectedTextBtn').disabled=false;
+}
+async function copySelectedPdfText(){
+  if(state.tool!=='text-select' || !state.pdf)return;
+  const selected=window.getSelection();
+  const layer=$('textLayer');
+  const current=selected && !selected.isCollapsed &&
+    layer.contains(selected.anchorNode) && layer.contains(selected.focusNode)
+    ? selected.toString() : '';
+  const value=current || state.selectedPdfText;
+  if(!value){setStatus('Drag across text on the PDF to select it first.');return;}
+  try{
+    if(!navigator.clipboard?.writeText)throw new Error('Clipboard not available');
+    await navigator.clipboard.writeText(value);
+    setStatus('Selected text copied to clipboard.');
+  }catch(_){
+    $('pasteDialogTitle').textContent='Copy selected PDF text';
+    $('pasteDialogHint').textContent='Select the text below and press Ctrl+C.';
+    $('pasteInsertBtn').hidden=true;
+    $('pasteDialogText').readOnly=true;
+    $('pasteDialogText').value=value;
+    $('pasteDialog').hidden=false;
+    $('pasteDialogText').focus();$('pasteDialogText').select();
+  }
+}
+
 function posOnPage(event) {
   const rect = $('pageStage').getBoundingClientRect();
   return {x: Math.max(0, Math.min(rect.width, event.clientX-rect.left)), y: Math.max(0, Math.min(rect.height, event.clientY-rect.top))};
@@ -779,6 +867,7 @@ function pasteCopiedItem(){
   return true;
 }
 function canInterceptClipboard(event){
+  if(state.tool==='text-select')return false; // Native text selection and Ctrl+C must work.
   if(!state.pdf || !$('pasteDialog').hidden || $('autofillDialog').open || !$('cropDialog').hidden)return false;
   if(event.target?.closest?.('input,textarea,select,[contenteditable="true"]'))return false;
   if(window.getSelection()?.toString())return false; // Preserve normal browser text selection.
@@ -834,6 +923,8 @@ function bind() {
   $('pasteCopiedBtn').addEventListener('click',pasteCopiedItem);
   $('pasteTextBtn').addEventListener('click',openPasteDialog);
   $('copyPageTextBtn').addEventListener('click',copyCurrentPageText);
+  $('copySelectedTextBtn').addEventListener('click',copySelectedPdfText);
+  document.addEventListener('selectionchange',captureSelectedPdfText);
   $('pasteCancelBtn').addEventListener('click',closePasteDialog);
   $('pasteInsertBtn').addEventListener('click',()=>{if(insertPastedText($('pasteDialogText').value))closePasteDialog();});
   $('pasteDialog').addEventListener('pointerdown',e=>{if(e.target===$('pasteDialog'))closePasteDialog();});
@@ -877,7 +968,7 @@ function bind() {
     if(['INPUT','TEXTAREA'].includes(tag)||e.ctrlKey||e.metaKey||e.altKey)return;
     if(e.key==='Escape'){if(state.cropEditing){closeCropEditor();return;}state.selectedId=null;setTool('select');renderAnnotations();}
     if((e.key==='Delete'||e.key==='Backspace')&&activeAnnotation())deleteSelected();
-    const shortcuts={v:'select',t:'text',h:'highlight',c:'cover',i:'image',p:'profile'};
+    const shortcuts={v:'select',s:'text-select',t:'text',h:'highlight',c:'cover',i:'image',p:'profile'};
     if(shortcuts[e.key.toLowerCase()])setTool(shortcuts[e.key.toLowerCase()]);
     if(e.key==='ArrowLeft'&&!$('prevBtn').disabled)$('prevBtn').click();
     if(e.key==='ArrowRight'&&!$('nextBtn').disabled)$('nextBtn').click();
