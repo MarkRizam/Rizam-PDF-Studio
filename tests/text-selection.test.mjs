@@ -24,7 +24,7 @@ test('native browser Ctrl+C is not captured in select-text mode',()=>{
   assert.match(main,/if\(state\.tool==='text-select'\)return false; \/\/ Native text selection and Ctrl\+C must work/);
   assert.match(main,/document\.addEventListener\('selectionchange',captureSelectedPdfText\)/);
   assert.match(main,/window\.getSelection\(\)/);
-  assert.match(main,/navigator\.clipboard\?\.writeText\(value\)/);
+  assert.match(main,/navigator\.clipboard\.writeText\(value\)/);
 });
 test('render task cancels stale page selections on navigation',()=>{
   assert.match(main,/state\.textLayerTask\.cancel\(\)/);
